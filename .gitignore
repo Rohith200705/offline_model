@@ -1,0 +1,50 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+*.log
+
+# Large model weights (download separately)
+models/
+*.onnx
+*.pt
+*.gguf
+*.tflite
+*.bin
+*.safetensors
+
+# Generated / runtime data
+data/
+sorted_photos/
+.gradle-home/
+build/
+dist/
+*.apk
+*.aab
+
+# IDE / OS
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Flutter (covered by sub .gitignores too)
+flutter_photo_organizer_new/build/
+flutter_photo_organizer/build/
+flutter_photo_organizer_new/.dart_tool/
+flutter_photo_organizer/.dart_tool/
+flutter_photo_organizer_new/android/.gradle/
+flutter_photo_organizer/android/.gradle/
+flutter_photo_organizer_new/windows/flutter/ephemeral/
+flutter_photo_organizer/windows/flutter/ephemeral/
+
+# Logs
+server.log
+server_err.log
+startup.log
+
+# Gradle
+.gradle/

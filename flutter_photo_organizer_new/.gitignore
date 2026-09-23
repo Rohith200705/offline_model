@@ -1,0 +1,43 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+*.lock
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+android/gradle.properties
+
+# iOS
+ios/.generated/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated files
+lib/generated/
+*.g.dart
+*.freezed.dart
+
+# Models (large files)
+assets/models/**/*.tflite
+assets/models/**/*.onnx
+
+# Logs
+*.log

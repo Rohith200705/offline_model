@@ -1,0 +1,13 @@
+﻿{
+    "java.import.gradle.enabled": false,
+    "java.import.maven.enabled": false,
+    "java.import.gradle.offline.enabled": true,
+    "redhat.telemetry.enabled": false,
+    "java.telemetry.enabled": false,
+    "java.jdt.ls.vmargs": "-XX:+UseG1GC -Xms256m -Xmx2g -XX:MaxRAMPercentage=50",
+    "files.watcherExclude": {
+        "**/.gradle-home/**": true,
+        "**/build/**": true,
+        "**/.gradle/**": true
+    }
+}

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Organizer</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/vue.global.prod.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div class="toast-container">
+            <div v-for="(toast, i) in toasts" :key="i" :class="['toast', 'toast-' + toast.type]">
+                {{ toast.message }}
+            </div>
+        </div>
+
+        <nav class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+            <div class="sidebar-header">
+                <span class="logo" v-if="!sidebarCollapsed">Photo Organizer</span>
+                <button class="btn-icon" @click="sidebarCollapsed = !sidebarCollapsed">
+                    {{ sidebarCollapsed ? '>' : '<' }}
+                </button>
+            </div>
+            <ul class="nav-links">
+                <li :class="{ active: currentPage === 'home' }" @click="currentPage = 'home'">Home</li>
+                <li :class="{ active: currentPage === 'organize' }" @click="currentPage = 'organize'">Organize</li>
+                <li :class="{ active: currentPage === 'browse' }" @click="currentPage = 'browse'">Browse</li>
+                <li :class="{ active: currentPage === 'chat' }" @click="currentPage = 'chat'">Chat</li>
+                <li :class="{ active: currentPage === 'faces' }" @click="currentPage = 'faces'">Faces</li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div v-if="currentPage === 'home'" class="dashboard">
+                <h1>Photo Organizer Dashboard</h1>
+                <p class="subtitle">Offline photo organization and management</p>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ stats.total_photos || 0 }}</div>
+                        <div class="stat-label">Total Photos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ stats.total_faces || 0 }}</div>
+                        <div class="stat-label">Face Detections</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ stats.total_persons || 0 }}</div>
+                        <div class="stat-label">Known People</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">{{ stats.total_scenes || 0 }}</div>
+                        <div class="stat-label">Scene Types</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Category Breakdown</h2>
+                    <div class="bar-chart">
+                        <div class="bar-row" v-for="(count, name) in (stats.categories || {})" :key="name">
+                            <span class="bar-label">{{ name }}</span>
+                            <div class="bar-track">
+                                <div class="bar-fill" :style="{ width: getBarWidth(count) + '%' }"></div>
+                            </div>
+                            <span class="bar-count">{{ count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentPage === 'organize'" class="organize-page">
+                <h1>Organize Photos</h1>
+                <p class="subtitle">Enter the path to your photos directory</p>
+                <div class="form-group">
+                    <label>Directory Path:</label>
+                    <input v-model="organizeForm.sourceDir" placeholder="e.g. C:/Users/You/Pictures" class="input" />
+                </div>
+                <div class="form-group">
+                    <label>Sort By:</label>
+                    <select v-model="organizeForm.organizeBy" class="input">
+                        <option value="auto">Auto (AI)</option>
+                        <option value="date">Date</option>
+                        <option value="location">Location</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" v-model="organizeForm.moveFiles" /> Move files instead of copying
+                    </label>
+                </div>
+                <button class="btn" @click="startOrganize" :disabled="organizing">
+                    {{ organizing ? 'Organizing...' : 'Start Organizing' }}
+                </button>
+                <div v-if="organizeResults" class="result-box">
+                    <h3>Results</h3>
+                    <pre>{{ JSON.stringify(organizeResults, null, 2) }}</pre>
+                </div>
+            </div>
+
+            <div v-if="currentPage === 'browse'" class="browse-page">
+                <div class="browse-header">
+                    <h1>Browse Sorted Photos</h1>
+                    <div class="search-box">
+                        <input v-model="searchQuery" @input="onSearchInput" placeholder="Search photos..." class="input" />
+                        <span v-if="searchLoading" class="loading-dot"></span>
+                    </div>
+                </div>
+
+                <div v-if="searchResults.length" class="search-results">
+                    <h2>Search Results</h2>
+                    <div class="photo-grid">
+                        <div class="photo-card" v-for="photo in searchResults" :key="photo.file_path" @click="openPhoto(photo)">
+                            <img :src="photoUrl(photo.file_path)" loading="lazy" class="photo-thumb" />
+                            <div class="photo-info">
+                                <div class="photo-name">{{ photo.file_path.split(/[/\\]/).pop() }}</div>
+                                <div class="photo-meta">{{ photo.date_taken || 'Unknown date' }}</div>
+                                <div class="photo-meta" v-if="photo.location_name">{{ photo.location_name }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="category-tabs">
+                    <button v-for="(photos, cat) in sortedPhotos" :key="cat"
+                        :class="['tab', { active: browseCategory === cat }]"
+                        @click="browseCategory = cat">
+                        {{ cat }} ({{ photos.length }})
+                    </button>
+                </div>
+
+                <div v-if="browseLoading" class="loading-centered">Loading photos...</div>
+                <div v-else-if="currentBrowsePhotos.length === 0" class="empty-state">No photos in this category</div>
+                <div v-else class="photo-grid">
+                    <div class="photo-card" v-for="photo in currentBrowsePhotos" :key="photo.path" @click="openPhoto(photo)">
+                        <img :src="photoUrl(photo.path)" loading="lazy" class="photo-thumb" />
+                        <div class="photo-info">
+                            <div class="photo-name">{{ photo.name }}</div>
+                            <div class="photo-meta">{{ photo.size ? (photo.size / 1024).toFixed(1) + ' KB' : '' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentPage === 'chat'" class="chat-page">
+                <h1>Photo Assistant</h1>
+                <div class="chat-container">
+                    <div class="chat-messages">
+                        <div class="chat-message user" v-for="msg in chatMessages" :key="msg.content" :class="msg.role">
+                            <div class="message-bubble">{{ msg.content }}</div>
+                        </div>
+                        <div v-if="chatLoading" class="chat-message assistant">
+                            <div class="message-bubble typing">Thinking...</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input v-model="chatInput" @keyup.enter="sendChat(chatInput)" placeholder="Ask about your photos..." class="input" />
+                        <button class="btn" @click="sendChat(chatInput)" :disabled="chatLoading">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="currentPage === 'faces'" class="faces-page">
+                <h1>Face Recognition</h1>
+
+                <div class="faces-grid">
+                    <div class="face-card" v-for="(info, name) in knownFaces" :key="name">
+                        <div class="face-avatar">{{ name.charAt(0).toUpperCase() }}</div>
+                        <div class="face-name">{{ name }}</div>
+                        <div class="face-count">{{ info.sample_images ? info.sample_images.length : 0 }} samples</div>
+                        <button class="btn btn-danger btn-small" @click="removeFace(name)">Remove</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Add New Person</h2>
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input v-model="faceForm.name" placeholder="Person name" class="input" />
+                    </div>
+                    <div class="form-group">
+                        <label>Photo:</label>
+                        <input type="file" accept="image/*" @change="handleFacePhoto" />
+                    </div>
+                    <div v-if="facePreview" class="face-preview">
+                        <img :src="facePreview" />
+                    </div>
+                    <button class="btn" @click="addFace" :disabled="!faceForm.name || !faceFile">Add Person</button>
+                </div>
+
+                <div class="section">
+                    <h2>Test Face Detection</h2>
+                    <div class="form-group">
+                        <label>Upload a photo to test:</label>
+                        <input type="file" accept="image/*" @change="handleTestPhoto" />
+                    </div>
+                    <div v-if="testLoading" class="loading-centered">Detecting faces...</div>
+                    <div v-if="testPreview" class="test-area">
+                        <div class="test-image-wrapper">
+                            <img :src="testPreview" ref="testImgEl" class="test-photo" />
+                            <div v-for="(face, i) in (testResults || [])" :key="i"
+                                class="face-bbox"
+                                :style="faceBoxStyle(face.bbox, $refs.testImgEl)">
+                                <span class="face-bbox-label">{{ face.name }} ({{ (face.confidence * 100).toFixed(0) }}%)</span>
+                            </div>
+                        </div>
+                        <div v-if="testResults && testResults.length === 0" class="empty-state">No faces detected</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
